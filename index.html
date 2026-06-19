@@ -1,0 +1,578 @@
+import { useState, useMemo } from "react";
+import {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
+} from "recharts";
+
+// --- CONSTANTS & CONFIGURATIONS ---
+const PAGE_SIZE = 10;
+const PIE_COLORS = ["#2266FF", "#FF8C00", "#00E5D1"];
+const SHIFT_COLORS = ["#2266FF", "#9B59B6"];
+
+const STATS_CONFIG = [
+  { label: "Total Machines", value: "55", color: "#2266FF", icon: "🤖" },
+  { label: "Total Inspections", value: "55", color: "#00E5D1", icon: "🔍" },
+  { label: "实时 Orange Alerts", value: "35", color: "#FF8C00", icon: "⚠️" },
+  { label: "🚨 Red Alerts", value: "18", color: "#FF4444", icon: "🚨" },
+  { label: "Machines w/ Orange", value: "23", color: "#FF8C00", icon: "📊" },
+  { label: "Machines w/ Red", value: "10", color: "#FF4444", icon: "📛" },
+];
+
+// --- STATIC DATA OUTSIDE COMPONENT ---
+const TABLE_DATA = [
+  { "Machine": "MP2_B039", "Building": "P1/P2", "Date": "2026-06-18", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Niwat Namsri", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B024", "Building": "P1/P2", "Date": "2026-06-17", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Jutithep Intayat", "Orange_Count": 1, "Red_Count": 0 },
+  { "Machine": "MP2_B025", "Building": "P1/P2", "Date": "2026-06-17", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 1, "Red_Count": 0 },
+  { "Machine": "MP2_B015", "Building": "P1/P2", "Date": "2026-06-16", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Oot Sintaphat", "Orange_Count": 3, "Red_Count": 0 },
+  { "Machine": "MP2_B023", "Building": "P1/P2", "Date": "2026-06-16", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Phongphak Saengkunchot", "Orange_Count": 1, "Red_Count": 0 },
+  { "Machine": "MP2_B006", "Building": "P1/P2", "Date": "2026-06-16", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Thanic Chaonaphue", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B014", "Building": "P1/P2", "Date": "2026-06-15", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Jutithep Intayat", "Orange_Count": 2, "Red_Count": 0 },
+  { "Machine": "MP2_B013", "Building": "P1/P2", "Date": "2026-06-15", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Jutithep Intayat", "Orange_Count": 2, "Red_Count": 0 },
+  { "Machine": "MP2_B052", "Building": "P1/P2", "Date": "2026-06-15", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 1, "Red_Count": 2 },
+  { "Machine": "MP2_B026", "Building": "P1/P2", "Date": "2026-06-14", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 1, "Red_Count": 3 },
+  { "Machine": "MP2_B046", "Building": "P1/P2", "Date": "2026-06-13", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Niwat Namsri", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B044", "Building": "P1/P2", "Date": "2026-06-13", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 2, "Red_Count": 2 },
+  { "Machine": "MP2_B034", "Building": "P1/P2", "Date": "2026-06-12", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B007", "Building": "P1/P2", "Date": "2026-06-12", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Phongphak Saengkunchot", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B048", "Building": "P1/P2", "Date": "2026-06-12", "Shift": "E", "Category": "Corrective Maintenance", "Name Action": "Thanic Chaonachue", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B020", "Building": "P1/P2", "Date": "2026-06-12", "Shift": "E", "Category": "Corrective Maintenance", "Name Action": "Thanic Chaonachue", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B027", "Building": "P1/P2", "Date": "2026-06-11", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Niwat Namsri", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B031", "Building": "P1/P2", "Date": "2026-06-11", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 1, "Red_Count": 1 },
+  { "Machine": "MP2_B049", "Building": "P1/P2", "Date": "2026-06-10", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Thanic Chaonachue", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B018", "Building": "P1/P2", "Date": "2026-06-10", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Jutithep Intayat", "Orange_Count": 2, "Red_Count": 0 },
+  { "Machine": "MP2_B003", "Building": "P1/P2", "Date": "2026-06-08", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B012", "Building": "P1/P2", "Date": "2026-06-08", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Jutithep Intayat", "Orange_Count": 1, "Red_Count": 0 },
+  { "Machine": "MP2_B001", "Building": "P1/P2", "Date": "2026-06-07", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Jutithep Intayat", "Orange_Count": 2, "Red_Count": 0 },
+  { "Machine": "MP2_B050", "Building": "P1/P2", "Date": "2026-06-07", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Niwat Namsri", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B021", "Building": "P1/P2", "Date": "2026-06-07", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Jutithep Intayat", "Orange_Count": 2, "Red_Count": 0 },
+  { "Machine": "MP2_B004", "Building": "P1/P2", "Date": "2026-06-05", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Niwat Namsri", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B029", "Building": "P1/P2", "Date": "2026-06-02", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Somboonsap Raksa", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B038", "Building": "P1/P2", "Date": "2026-06-01", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Niwat Namsri", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B002", "Building": "P1/P2", "Date": "2026-06-01", "Shift": "D", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 2, "Red_Count": 0 },
+  { "Machine": "MP2_B028", "Building": "P1/P2", "Date": "2026-05-29", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 1, "Red_Count": 1 },
+  { "Machine": "MP2_B030", "Building": "P1/P2", "Date": "2026-05-24", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Pattrawoot Opak", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B019", "Building": "P1/P2", "Date": "2026-05-22", "Shift": "D", "Category": "Breakdown Maintenance", "Name Action": "Somboonsap Raksa", "Orange_Count": 1, "Red_Count": 0 },
+  { "Machine": "MP2_B035", "Building": "P1/P2", "Date": "2026-05-12", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Jutithep Intayat", "Orange_Count": 0, "Red_Count": 4 },
+  { "Machine": "MP2_B056", "Building": "P1/P2", "Date": "2026-05-09", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Niwat Namsri", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B040", "Building": "P1/P2", "Date": "2026-05-07", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Thanic Chaonachue", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP2_B037", "Building": "P1/P2", "Date": "2026-05-03", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Sinlapachai Ruksili", "Orange_Count": 1, "Red_Count": 0 },
+  { "Machine": "MP2_B011", "Building": "P1/P2", "Date": "2026-04-05", "Shift": "E", "Category": "Preventive Maintenance", "Name Action": "Suradech Chuennaichit", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP4_B042", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 1 },
+  { "Machine": "MP5_B009", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 2 },
+  { "Machine": "MP4_B016", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 1, "Red_Count": 0 },
+  { "Machine": "MP4_B036", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP4_B045", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP4_B022", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP4_B051", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 1 },
+  { "Machine": "MP4_B008", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 2, "Red_Count": 0 },
+  { "Machine": "MP4_B041", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP5_B005", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 1 },
+  { "Machine": "MP5_B043", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP5_B017", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 2, "Red_Count": 0 },
+  { "Machine": "MP5_B032", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP5_B047", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP5_B054", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP5_B055", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 1, "Red_Count": 0 },
+  { "Machine": "MP5_B057", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 0, "Red_Count": 0 },
+  { "Machine": "MP5_B058", "Building": "P4", "Date": "2026-03-26", "Shift": "D", "Category": "Corrective Maintenance", "Name Action": "Kasemsak Moonkham", "Orange_Count": 2, "Red_Count": 0 }
+];
+
+const DAILY_TREND = [
+  { date: "Mar 26", orange: 8, red: 5 }, { date: "Apr 05", orange: 0, red: 0 }, { date: "May 03", orange: 1, red: 0 },
+  { date: "May 07", orange: 0, red: 0 }, { date: "May 09", orange: 0, red: 0 }, { date: "May 12", orange: 0, red: 4 },
+  { date: "May 22", orange: 1, red: 0 }, { date: "May 24", orange: 0, red: 0 }, { date: "May 29", orange: 1, red: 1 },
+  { date: "Jun 01", orange: 2, red: 0 }, { date: "Jun 02", orange: 0, red: 0 }, { date: "Jun 05", orange: 0, red: 0 },
+  { date: "Jun 07", orange: 4, red: 0 }, { date: "Jun 08", orange: 1, red: 0 }, { date: "Jun 10", orange: 2, red: 0 },
+  { date: "Jun 11", orange: 1, red: 1 }, { date: "Jun 12", orange: 0, red: 0 }, { date: "Jun 13", orange: 2, red: 2 },
+  { date: "Jun 14", orange: 1, red: 3 }, { date: "Jun 15", orange: 5, red: 2 }, { date: "Jun 16", orange: 4, red: 0 },
+  { date: "Jun 17", orange: 2, red: 0 }, { date: "Jun 18", orange: 0, red: 0 },
+];
+
+const CATEGORY_DATA = [
+  { name: "Preventive", value: 33 }, { name: "Corrective", value: 21 }, { name: "Breakdown", value: 1 }
+];
+const BUILDING_DATA_MAIN = [
+  { building: "P1/P2", orange: 27, red: 13 }, { building: "P4", orange: 8, red: 5 }
+];
+const SHIFT_DATA = [
+  { shift: "Day (D)", count: 36 }, { shift: "Evening (E)", count: 19 }
+];
+const TIRE_PRESSURE = [
+  { tire: "Front Left", avg: 2.83 }, { tire: "Front Right", avg: 2.73 },
+  { tire: "Rear Left", avg: 2.89 }, { tire: "Rear Right", avg: 2.79 }
+];
+
+// --- REPORT PAGE CONFIG ---
+const TRANSLATIONS = {
+  th: {
+    title: "รายงานสรุปผู้บริหาร MiR Robot",
+    subtitle: "สถานะล้อเครื่องจักร · อัปเดตล่าสุด: 18 มิ.ย. 2569",
+    share: "📋 วิธีแชร์รายงานนี้",
+    shareDesc: "คัดลอกโค้ด React -> Deploy บน Vercel/Netlify -> ได้ลิงก์แชร์ฟรี",
+    total: "เครื่องทั้งหมด", problem: "เครื่องมีปัญหา",
+    critical: "วิกฤต (แดง)", warning: "เตือน (ส้ม)",
+    building: "สรุปตามอาคาร", statusDist: "การกระจายสถานะ",
+    topIssue: "เครื่องที่ต้องดูแลเร่งด่วน",
+    machine: "เครื่อง", date: "วันที่", red: "แดง", orange: "ส้ม", status: "สถานะ",
+    recommendations: [
+      "🔴 เครื่อง MP2_B035 มี Red Count สูงสุด (4) ควรซ่อมบำรุงทันที",
+      "🏭 P1/P2 มีอัตราปัญหา 51.4% สูงกว่า P4 (50%) ควรเพิ่มความถี่การตรวจสอบ",
+      "🔧 Kasemsak Moonkham ดูแลเครื่องมากที่สุด (18 เครื่อง) ควรกระจายงาน",
+      "⚙️ ล้อหลังซ้ายมีค่าสึกหรอเฉลี่ยสูงสุด (2.89 mm) ควรตรวจสอบเป็นพิเศษ"
+    ]
+  },
+  en: {
+    title: "MiR Robot Executive Report",
+    subtitle: "Wheel Wear Status · Last Updated: Jun 18, 2026",
+    share: "📋 How to Share This Report",
+    shareDesc: "Copy React code -> Deploy on Vercel/Netlify -> Get a free shareable link",
+    total: "Total Machines", problem: "Problem Machines",
+    critical: "Critical (Red)", warning: "Warning (Orange)",
+    building: "Building Summary", statusDist: "Status Distribution",
+    topIssue: "Machines Requiring Urgent Attention",
+    machine: "Machine", date: "Date", red: "Red", orange: "Orange", status: "Status",
+    recommendations: [
+      "🔴 MP2_B035 has highest Red Count (4) -- immediate maintenance required",
+      "🏭 P1/P2 problem rate 51.4% vs P4 50% -- increase inspection frequency",
+      "🔧 Kasemsak Moonkham handles most machines (18) -- consider workload distribution",
+      "⚙️ Rear Left wheel has highest avg wear (2.89 mm) -- special attention needed"
+    ]
+  }
+};
+
+const PIE_COLORS_REPORT = { NORMAL: "#22C55E", WARNING: "#FB923C", CRITICAL: "#EF4444" };
+
+const STATUS_PIE_DATA = [
+  { name: "NORMAL", value: 27 },
+  { name: "WARNING", value: 18 },
+  { name: "CRITICAL", value: 10 },
+];
+
+const BUILDING_DATA_REPORT = [
+  { name: "P1/P2", total: 37, problem: 19, rate: 51.4 },
+  { name: "P4", total: 18, problem: 9, rate: 50.0 },
+];
+
+const URGENT_MACHINES = [
+  { Machine: "MP2_B035", Date: "2026-05-12", Orange: 0, Red: 4, Status: "CRITICAL" },
+  { Machine: "MP2_B026", Date: "2026-06-14", Orange: 1, Red: 3, Status: "CRITICAL" },
+  { Machine: "MP2_B044", Date: "2026-06-13", Orange: 2, Red: 2, Status: "CRITICAL" },
+  { Machine: "MP2_B052", Date: "2026-06-15", Orange: 1, Red: 2, Status: "CRITICAL" },
+  { Machine: "MP5_B009", Date: "2026-03-26", Orange: 0, Red: 2, Status: "CRITICAL" },
+];
+
+// --- MAIN WRAPPER COMPONENT ---
+export default function RenderAnalysis() {
+  const [activePage, setActivePage] = useState("dashboard"); // "dashboard" หรือ "report"
+  const [lang, setLang] = useState("th");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState("Date");
+  const [sortDir, setSortDir] = useState("desc");
+
+  const t = TRANSLATIONS[lang];
+
+  // --- Logic สำหรับหน้า Dashboard ---
+  const filtered = useMemo(() => {
+    const s = search.toLowerCase();
+    return TABLE_DATA.filter(r =>
+      r.Machine.toLowerCase().includes(s) ||
+      r.Building.toLowerCase().includes(s) ||
+      r.Category.toLowerCase().includes(s) ||
+      r["Name Action"].toLowerCase().includes(s)
+    );
+  }, [search]);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const pagedData = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
+
+  const SortIcon = ({ col }) => {
+    if (sortKey !== col) return <span style={{ color: "#555", marginLeft: 4 }}>⇅</span>;
+    return <span style={{ color: "#2266FF", marginLeft: 4 }}>{sortDir === "asc" ? "↑" : "↓"}</span>;
+  };
+
+  // --- Logic สำหรับหน้า Report ---
+  const kpisReport = [
+    { label: t.total, value: 55, color: "#60A5FA", icon: "🤖", sub: "P1/P2: 37 | P4: 18" },
+    { label: t.problem, value: 28, color: "#FBBF24", icon: "⚠️", sub: "51% of total" },
+    { label: t.critical, value: 18, color: "#F87171", icon: "🔴", sub: "Needs immediate action" },
+    { label: t.warning, value: 35, color: "#FB923C", icon: "🟠", sub: "Monitor closely" },
+  ];
+
+  return (
+    <div style={{ background: "#000", color: "#fff", minHeight: "100vh", fontFamily: "Arial, sans-serif" }}>
+      
+      {/* Navigation Bar ด้านบนสุดเพื่อสลับหน้า */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#131314", padding: "12px 24px", borderBottom: "1px solid #222" }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button 
+            onClick={() => setActivePage("dashboard")}
+            style={{
+              background: activePage === "dashboard" ? "#2266FF" : "transparent",
+              color: "#FFF", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer", fontWeight: 600, fontSize: 13
+            }}
+          >
+            📊 Main Dashboard
+          </button>
+          <button 
+            onClick={() => setActivePage("report")}
+            style={{
+              background: activePage === "report" ? "#2563EB" : "transparent",
+              color: "#FFF", border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer", fontWeight: 600, fontSize: 13
+            }}
+          >
+            🏢 Executive Report
+          </button>
+        </div>
+        
+        {/* แสดงปุ่มเปลี่ยนภาษาเฉพาะหน้า Report */}
+        {activePage === "report" && (
+          <div style={{ display: "flex", gap: 6 }}>
+            {["th", "en"].map((lng) => (
+              <button
+                key={lng}
+                onClick={() => setLang(lng)}
+                style={{
+                  background: lang === lng ? "#2563EB" : "#1E293B",
+                  color: "#FFF", border: "none", borderRadius: 4, padding: "4px 10px", cursor: "pointer", fontSize: 11, fontWeight: 600
+                }}
+              >
+                {lng === "th" ? "🇹🇭 TH" : "🇬🇧 EN"}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Main Content Area */}
+      <div style={{ padding: "24px" }}>
+        
+        {/* ================= PAGE 1: MAIN DASHBOARD ================= */}
+        {activePage === "dashboard" && (
+          <div>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
+              <div style={{ background: "#2266FF", borderRadius: 10, padding: "8px 14px", fontSize: 22 }}>🤖</div>
+              <div>
+                <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: 1 }}>MiR Dashboard</h1>
+                <p style={{ margin: 0, fontSize: 13, color: "#888" }}>Mobile Industrial Robot -- Tire Pressure & Maintenance Monitor | Mar-Jun 2026</p>
+              </div>
+            </div>
+
+            {/* KPI Cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 12, marginBottom: 28 }}>
+              {STATS_CONFIG.map((c, i) => (
+                <div key={i} style={{ background: "#131314", borderRadius: 10, padding: "16px 14px", borderTop: `3px solid ${c.color}` }}>
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>{c.icon}</div>
+                  <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{c.label}</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: c.color }}>{c.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Row 1: Trend + Building */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 16 }}>
+              <div style={{ background: "#131314", borderRadius: 10, padding: 20 }}>
+                <h3 style={{ margin: "0 0 16px", fontSize: 14, color: "#ccc", fontWeight: 600 }}>📈 Daily Alert Trend (Orange & Red)</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={DAILY_TREND}>
+                    <CartesianGrid stroke="#222" strokeDasharray="3 3" />
+                    <XAxis dataKey="date" stroke="#666" tick={{ fontSize: 10 }} interval={2} />
+                    <YAxis stroke="#666" tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ background: "#1F1F1F", border: "none", color: "#fff", fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line type="monotone" dataKey="orange" stroke="#FF8C00" strokeWidth={2} dot={{ r: 3, fill: "#FF8C00" }} name="Orange" />
+                    <Line type="monotone" dataKey="red" stroke="#FF4444" strokeWidth={2} dot={{ r: 3, fill: "#FF4444" }} name="Red" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              
+              <div style={{ background: "#131314", borderRadius: 10, padding: 20 }}>
+                <h3 style={{ margin: "0 0 16px", fontSize: 14, color: "#ccc", fontWeight: 600 }}>🏭 Alerts by Building</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={BUILDING_DATA_MAIN} layout="vertical">
+                    <CartesianGrid stroke="#222" strokeDasharray="3 3" />
+                    <XAxis type="number" stroke="#666" tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="building" type="category" stroke="#666" tick={{ fontSize: 12 }} width={50} />
+                    <Tooltip contentStyle={{ background: "#1F1F1F", border: "none", color: "#fff", fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="orange" fill="#FF8C00" name="Orange" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="red" fill="#FF4444" name="Red" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Row 2: Charts Trio */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
+              <div style={{ background: "#131314", borderRadius: 10, padding: 20 }}>
+                <h3 style={{ margin: "0 0 16px", fontSize: 14, color: "#ccc", fontWeight: 600 }}>🔧 Maintenance Category</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={CATEGORY_DATA} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={({ name, value }) => `${name}: ${value}`} labelLine={false}>
+                      {CATEGORY_DATA.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: "#1F1F1F", border: "none", color: "#fff", fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div style={{ background: "#131314", borderRadius: 10, padding: 20 }}>
+                <h3 style={{ margin: "0 0 16px", fontSize: 14, color: "#ccc", fontWeight: 600 }}>🕐 Shift Distribution</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={SHIFT_DATA} dataKey="count" nameKey="shift" cx="50%" cy="50%" outerRadius={75} label={({ shift, count }) => `${shift}: ${count}`} labelLine={false}>
+                      {SHIFT_DATA.map((_, i) => <Cell key={i} fill={SHIFT_COLORS[i % SHIFT_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: "#1F1F1F", border: "none", color: "#fff", fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div style={{ background: "#131314", borderRadius: 10, padding: 20 }}>
+                <h3 style={{ margin: "0 0 16px", fontSize: 14, color: "#ccc", fontWeight: 600 }}>🛞 Avg Tire Pressure (bar)</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={TIRE_PRESSURE}>
+                    <CartesianGrid stroke="#222" strokeDasharray="3 3" />
+                    <XAxis dataKey="tire" stroke="#666" tick={{ fontSize: 10 }} />
+                    <YAxis stroke="#666" tick={{ fontSize: 11 }} domain={[2.5, 3.1]} />
+                    <Tooltip contentStyle={{ background: "#1F1F1F", border: "none", color: "#fff", fontSize: 12 }} formatter={(v) => [`${v} bar`, "Avg"]} />
+                    <Bar dataKey="avg" fill="#00E5D1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Table Section */}
+            <div style={{ background: "#131314", borderRadius: 10, padding: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <h3 style={{ margin: 0, fontSize: 14, color: "#ccc", fontWeight: 600 }}>📋 Machine Inspection Records ({filtered.length} records)</h3>
+                <input
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setPage(1); }}
+                  placeholder="🔍 Search machine, building, category..."
+                  style={{ background: "#1F1F1F", border: "1px solid #333", borderRadius: 6, padding: "6px 12px", color: "#fff", fontSize: 12, width: 280, outline: "none" }}
+                />
+              </div>
+              
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid #333" }}>
+                      {["Machine", "Building", "Date", "Shift", "Category", "Name Action", "Orange_Count", "Red_Count"].map(col => (
+                        <th key={col} onClick={() => handleSort(col)}
+                          style={{ padding: "8px 10px", textAlign: "left", color: "#888", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", userSelect: "none" }}>
+                          {col === "Orange_Count" ? "🟠 Orange" : col === "Red_Count" ? "🔴 Red" : col}
+                          <SortIcon col={col} />
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedData.map((row, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid #1a1a1a", background: i % 2 === 0 ? "#131314" : "#161618" }}>
+                        <td style={{ padding: "7px 10px", color: "#00E5D1", fontWeight: 600 }}>{row.Machine}</td>
+                        <td style={{ padding: "7px 10px", color: "#aaa" }}>{row.Building}</td>
+                        <td style={{ padding: "7px 10px", color: "#aaa" }}>{row.Date}</td>
+                        <td style={{ padding: "7px 10px" }}>
+                          <span style={{ background: row.Shift === "D" ? "#1a3a6e" : "#3a1a6e", color: row.Shift === "D" ? "#6699FF" : "#CC88FF", padding: "2px 8px", borderRadius: 4, fontSize: 11 }}>
+                            {row.Shift === "D" ? "Day" : "Evening"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "7px 10px" }}>
+                          <span style={{
+                            background: row.Category === "Preventive Maintenance" ? "#0a2a1a" : row.Category === "Corrective Maintenance" ? "#2a1a0a" : "#2a0a0a",
+                            color: row.Category === "Preventive Maintenance" ? "#00CC66" : row.Category === "Corrective Maintenance" ? "#FF8C00" : "#FF4444",
+                            padding: "2px 8px", borderRadius: 4, fontSize: 10, whiteSpace: "nowrap"
+                          }}>
+                            {row.Category.replace(" Maintenance", "")}
+                          </span>
+                        </td>
+                        <td style={{ padding: "7px 10px", color: "#ccc" }}>{row["Name Action"]}</td>
+                        <td style={{ padding: "7px 10px", textAlign: "center" }}>
+                          {row.Orange_Count > 0 
+                            ? <span style={{ background: "#3a2000", color: "#FF8C00", padding: "2px 10px", borderRadius: 4, fontWeight: 700 }}>{row.Orange_Count}</span>
+                            : <span style={{ color: "#444" }}>--</span>
+                          }
+                        </td>
+                        <td style={{ padding: "7px 10px", textAlign: "center" }}>
+                          {row.Red_Count > 0 
+                            ? <span style={{ background: "#3a0000", color: "#FF4444", padding: "2px 10px", borderRadius: 4, fontWeight: 700 }}>{row.Red_Count}</span>
+                            : <span style={{ color: "#444" }}>--</span>
+                          }
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+                <span style={{ fontSize: 12, color: "#666" }}>Page {page} of {totalPages} ({sorted.length} rows)</span>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                    style={{ background: "#1F1F1F", border: "1px solid #333", color: page === 1 ? "#444" : "#fff", padding: "4px 12px", borderRadius: 5, cursor: page === 1 ? "default" : "pointer", fontSize: 12 }}>
+                    &larr; Prev
+                  </button>
+                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                    style={{ background: "#1F1F1F", border: "1px solid #333", color: page === totalPages ? "#444" : "#fff", padding: "4px 12px", borderRadius: 5, cursor: page === totalPages ? "default" : "pointer", fontSize: 12 }}>
+                    Next &rarr;
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p style={{ textAlign: "center", color: "#444", fontSize: 11, marginTop: 16 }}>MiR_Dashboard · latest_per_machine.xlsx · 55 machines · Mar 26 - Jun 18, 2026</p>
+          </div>
+        )}
+
+        {/* ================= PAGE 2: EXECUTIVE REPORT ================= */}
+        {activePage === "report" && (
+          <div style={{ background: "#0A0A0B", padding: "12px", borderRadius: 12 }}>
+            {/* Header Container */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+              <div style={{ fontSize: 36 }}>🤖</div>
+              <div>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>{t.title}</h1>
+                <p style={{ margin: 0, fontSize: 12, color: "#64748B" }}>{t.subtitle}</p>
+              </div>
+            </div>
+
+            {/* Share Banner */}
+            <div style={{ background: "#1E3A5F", border: "1px solid #2563EB", borderRadius: 10, padding: "12px 18px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 20 }}>🔗</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#93C5FD" }}>{t.share}</div>
+                <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 2 }}>{t.shareDesc}</div>
+              </div>
+            </div>
+
+            {/* KPI Dashboard Blocks */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+              {kpisReport.map((k) => (
+                <div key={k.label} style={{ background: "#131314", borderRadius: 12, padding: "16px 18px", borderLeft: `4px solid ${k.color}` }}>
+                  <div style={{ fontSize: 20, marginBottom: 4 }}>{k.icon}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: k.color }}>{k.value}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, margin: "4px 0" }}>{k.label}</div>
+                  <div style={{ fontSize: 11, color: "#64748B" }}>{k.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Charts Split Layout */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+              {/* Distribution Chart */}
+              <div style={{ background: "#131314", borderRadius: 12, padding: 20 }}>
+                <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 700, color: "#94A3B8" }}>{t.statusDist}</h3>
+                <div style={{ display: "flex", alignItems: "center", height: 180 }}>
+                  <ResponsiveContainer width="50%" height="100%">
+                    <PieChart>
+                      <Pie data={STATUS_PIE_DATA} dataKey="value" nameKey="name" innerRadius={50} outerRadius={70} paddingAngle={4}>
+                        {STATUS_PIE_DATA.map((entry) => <Cell key={entry.name} fill={PIE_COLORS_REPORT[entry.name]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={TOOLTIP_STYLE} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Custom Labels side */}
+                  <div style={{ width: "50%", paddingLeft: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                    {STATUS_PIE_DATA.map((x) => (
+                      <div key={x.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: "50%", background: PIE_COLORS_REPORT[x.name] }} />
+                          {x.name}
+                        </span>
+                        <span style={{ fontWeight: 700 }}>{x.value} ({Math.round(x.value / 55 * 100)}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Building Bar Chart */}
+              <div style={{ background: "#131314", borderRadius: 12, padding: 20 }}>
+                <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 700, color: "#94A3B8" }}>{t.building}</h3>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={BUILDING_DATA_REPORT} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid stroke="#1E293B" strokeDasharray="3 3" />
+                    <XAxis dataKey="name" stroke="#64748B" tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#64748B" tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="total" fill="#3B82F6" name={lang === "th" ? "ทั้งหมด" : "Total"} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="problem" fill="#F59E0B" name={lang === "th" ? "พบปัญหา" : "Problem"} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Recommendations & Critical Table Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16 }}>
+              {/* Table */}
+              <div style={{ background: "#131314", borderRadius: 12, padding: 20 }}>
+                <h3 style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 700, color: "#F87171" }}>⚠️ {t.topIssue}</h3>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid #1E293B", color: "#64748B" }}>
+                      <th style={{ padding: 8 }}>{t.machine}</th>
+                      <th style={{ padding: 8 }}>{t.date}</th>
+                      <th style={{ padding: 8, textAlign: "center" }}>{t.orange}</th>
+                      <th style={{ padding: 8, textAlign: "center" }}>{t.red}</th>
+                      <th style={{ padding: 8 }}>{t.status}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {URGENT_MACHINES.map((m, idx) => (
+                      <tr key={idx} style={{ borderBottom: "1px solid #1E293B" }}>
+                        <td style={{ padding: 8, fontWeight: 700, color: "#FFF" }}>{m.Machine}</td>
+                        <td style={{ padding: 8, color: "#64748B" }}>{m.Date}</td>
+                        <td style={{ padding: 8, textAlign: "center", color: "#FB923C", fontWeight: 700 }}>{m.Orange || "-"}</td>
+                        <td style={{ padding: 8, textAlign: "center", color: "#F87171", fontWeight: 700 }}>{m.Red}</td>
+                        <td style={{ padding: 8 }}>
+                          <span style={{ fontSize: 10, background: "#7F1D1D", color: "#FCA5A5", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>{m.Status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Recommendations Box */}
+              <div style={{ background: "#131314", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column" }}>
+                <h3 style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 700, color: "#38BDF8" }}>💡 {lang === "th" ? "ข้อเสนอแนะเชิงกลยุทธ์" : "Strategic Recommendations"}</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+                  {t.recommendations.map((rec, i) => (
+                    <div key={i} style={{ display: "flex", gap: 10, fontSize: 12, background: "#1E293B", padding: "10px 12px", borderRadius: 8, lineHeight: "1.5" }}>
+                      <span>{rec}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <p style={{ textAlign: "center", color: "#334155", fontSize: 11, marginTop: 20 }}>💡 วิธีแชร์: Screenshot หน้านี้ หรือ Copy โค้ดไป Deploy บน Vercel ฟรี</p>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
